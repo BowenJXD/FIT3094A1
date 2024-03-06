@@ -44,4 +44,8 @@ public:
 	AShip* PotentialCrash = nullptr;
 	bool bAtNextNode = false;
 	bool bAtGoal = false;
+
+	// ----------------- New -----------------
+	// MDD
+	//
 };

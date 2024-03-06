@@ -56,7 +56,7 @@ public:
 
 	//CHANGE THESE IF YOU WANT COLLISION TO BE ENABLED OR IF YOU WANT INDIVIDUAL SHIP STATS
 	bool CollisionAndReplanning = false;
-	bool IndividualStats = false;
+	bool IndividualStats = true;
 
 	bool CameraRotated = false;
 
@@ -95,6 +95,7 @@ public:
 	void DestroyAllActors();
 	void CheckForCollisions();
 	
+	// ICTS
 	void CalculatePath();
 	void Replan(AShip* Ship);
 
@@ -112,9 +113,6 @@ public:
 
 	int GetManhattanDistance(const GridNode* Start, const GridNode* End) const;
 
-	void AddRenderActors(AShip* Ship);
-
-	void RenderAllPaths();
-
-	TArray<FIntPoint> RenderingLocations;
+	// ICT Tree
+	// MDD ([k])
 };

@@ -7,6 +7,7 @@
 #include "Ship.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Utils/StatisticsExporter.h"
 
 DEFINE_LOG_CATEGORY(IndividualShips);
 DEFINE_LOG_CATEGORY(Heuristics);
@@ -282,6 +283,16 @@ void ALevelGenerator::DetailPlan()
 		if(IndividualStats)
 		{
 			UE_LOG(IndividualShips, Warning, TEXT("Ship %s has: Cells Searched: %d, Planned Path Cost: %d, Planned Path Action Amount: %d"), *Ships[i]->GetName(), Ships[i]->CellsSearched, ShipPathCost, Ships[i]->Path.Num());
+
+			// Code Modification (Adding Code)
+			ShipLog* Log = new ShipLog();
+			Log->ScenarioShipCount = Scenarios[ScenarioIndex - 1];
+			Log->ShipName = Ships[i]->GetName();
+			Log->CellsExpanded = Ships[i]->CellsSearched;
+			Log->PathCost = ShipPathCost;
+			Log->ActionAmount = Ships[i]->Path.Num();
+			StatisticsExporter::Get().AddShipLog(*Log);
+			// ---------------------------
 		}
 	}
 
@@ -297,6 +308,15 @@ void ALevelGenerator::DetailPlan()
 	UE_LOG(Heuristics, Warning, TEXT("Total Estimated Path Cost: %d"), TotalPathCost);
 	UE_LOG(Heuristics, Warning, TEXT("Total Planning Time Taken: %d seconds"), PlanEndTime - PlanStartTime);
 
+	// Code Modification (Adding Code)
+	ScenarioLog* Log = new ScenarioLog();
+	Log->ShipCount = Scenarios[ScenarioIndex - 1];
+	Log->TotalCellsExpanded = SearchCount;
+	Log->TotalPathLength = ShipPathLength;
+	Log->TotalPathCost = TotalPathCost;
+	Log->TotalTimeTaken = PlanEndTime - PlanStartTime;
+	StatisticsExporter::Get().AddScenarioLog(*Log);
+	// ---------------------------
 }
 
 void ALevelGenerator::DetailActual()
@@ -338,6 +358,14 @@ void ALevelGenerator::NextLevel()
 			DetailActual();
 			FinishedScenarios = true;
 			UE_LOG(LogTemp, Warning, TEXT("Completed!"));
+
+			// Code Modification (Adding Code)
+			StatisticsExporter::Get().ScenarioLogCSV();
+			if (IndividualStats)
+			{
+				StatisticsExporter::Get().ShipLogCSV();
+			}
+			// ---------------------------
 		}
 	}
 	
@@ -470,7 +498,6 @@ void ALevelGenerator::CalculatePath()
 		TArray<GridNode*> OpenList;
 		TArray<GridNode*> ClosedList;
 		OpenList.Add(StartNode);
-		SearchCount++;
 		
 		while (OpenList.Num() > 0)
 		{
@@ -490,6 +517,7 @@ void ALevelGenerator::CalculatePath()
 			// Check if we have reached the goal
 			if (CurrentNode == GoalNode)
 			{
+				SearchCount += ClosedList.Num();
 				RenderPath(Ship);
 				ResetAllNodes();
 				break;
@@ -500,7 +528,6 @@ void ALevelGenerator::CalculatePath()
 			for (int j = 0; j < Neighbours.Num(); j++)
 			{
 				GridNode* Neighbour = Neighbours[j];
-				SearchCount++;
 
 				//
 				if (BlackList.Contains(FIntPoint(Neighbour->X, Neighbour->Y)))
@@ -579,42 +606,4 @@ TArray<GridNode*> ALevelGenerator::GetNeighbours(GridNode* Node)
 int ALevelGenerator::GetManhattanDistance(const GridNode* Start, const GridNode* End) const
 {
 	return FMath::Abs(Start->X - End->X) + FMath::Abs(Start->Y - End->Y);
-}
-
-void ALevelGenerator::AddRenderActors(AShip* Ship)
-{
-	GridNode* CurrentNode = Ship->GoalNode;
-
-	if (CurrentNode)
-	{
-		for (int _ = 0; _ < 100000; _++)
-		{
-			if (CurrentNode->Parent == nullptr)
-			{
-				break;
-			}
-			FIntPoint Location = FIntPoint(CurrentNode->X, CurrentNode->Y);
-			if (!RenderingLocations.Contains(Location))
-			{
-				RenderingLocations.Add(Location);
-			}
-			Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
-			CurrentNode = CurrentNode->Parent;
-			if (_ == 9999)
-			{
-				UE_LOG(LogTemp, Error, TEXT("Infinite loop detected"));
-			}
-		}
-	}
-}
-
-void ALevelGenerator::RenderAllPaths()
-{
-	for (int i = 0; i < RenderingLocations.Num(); i++)
-	{
-		FVector Position(RenderingLocations[i].X * GRID_SIZE_WORLD, RenderingLocations[i].Y * GRID_SIZE_WORLD, 10);
-		AActor* PathActor = GetWorld()->SpawnActor(PathDisplayBlueprint, &Position);
-		PathDisplayActors.Add(PathActor);
-	}
-	RenderingLocations.Empty();
 }
