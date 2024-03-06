@@ -99,9 +99,22 @@ public:
 	void Replan(AShip* Ship);
 
 	//--------------------New Function--------------------
+
+	/**
+	 * @return GridNode* at the location of the Ship
+	 */
 	GridNode* GetLocation(const AShip* Ship) const;
-	
+
+	/**
+	 * @return Max of 4 Neighbours from 4 directions (up, down, left, right)
+	 */
 	TArray<GridNode*> GetNeighbours(GridNode* Node);
 
 	int GetManhattanDistance(const GridNode* Start, const GridNode* End) const;
+
+	void AddRenderActors(AShip* Ship);
+
+	void RenderAllPaths();
+
+	TArray<FIntPoint> RenderingLocations;
 };

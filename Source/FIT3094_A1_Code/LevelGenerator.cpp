@@ -455,6 +455,7 @@ void ALevelGenerator::CheckForCollisions()
 
 void ALevelGenerator::CalculatePath()
 {
+	TArray<FIntPoint> BlackList = {  };
 	
 	for(int i = 0; i < Ships.Num(); i++)
 	{
@@ -463,11 +464,11 @@ void ALevelGenerator::CalculatePath()
 		
 		// A* algorithm
 		AShip* Ship = Ships[i];
-		TArray<GridNode*> OpenList;
-		TArray<GridNode*> ClosedList;
-		TArray<GridNode*> Path;
 		GridNode* StartNode = GetLocation(Ship);
 		GridNode* GoalNode = Ship->GoalNode;
+		
+		TArray<GridNode*> OpenList;
+		TArray<GridNode*> ClosedList;
 		OpenList.Add(StartNode);
 		SearchCount++;
 		
@@ -489,9 +490,8 @@ void ALevelGenerator::CalculatePath()
 			// Check if we have reached the goal
 			if (CurrentNode == GoalNode)
 			{
-				Ship->GoalNode = GoalNode;
-				Ship->Path = Path;
 				RenderPath(Ship);
+				ResetAllNodes();
 				break;
 			}
 
@@ -500,6 +500,15 @@ void ALevelGenerator::CalculatePath()
 			for (int j = 0; j < Neighbours.Num(); j++)
 			{
 				GridNode* Neighbour = Neighbours[j];
+				SearchCount++;
+
+				//
+				if (BlackList.Contains(FIntPoint(Neighbour->X, Neighbour->Y)))
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Blacklisted"));
+				}
+				//
+				
 				// Skip if the neighbour is a land node
 				if (Neighbour->GridType == GridNode::Land)
 				{
@@ -526,12 +535,9 @@ void ALevelGenerator::CalculatePath()
 				Neighbour->G = NewG;
 				Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
 				Neighbour->F = Neighbour->G + Neighbour->H;
-
-				Path.Add(Neighbour);
 			}
 		}
-	}
-	
+	}	
 }
 
 void ALevelGenerator::Replan(AShip* Ship)
@@ -551,21 +557,21 @@ GridNode* ALevelGenerator::GetLocation(const AShip* Ship) const
 TArray<GridNode*> ALevelGenerator::GetNeighbours(GridNode* Node)
 {
 	TArray<GridNode*> Neighbours;
-	for (int i = -1; i <= 1; i++)
+	if (Node->X > 0)
 	{
-		for (int j = -1; j <= 1; j++)
-		{
-			if (i == 0 && j == 0)
-			{
-				continue;
-			}
-			int X = Node->X + i;
-			int Y = Node->Y + j;
-			if (X >= 0 && X < MapSizeX && Y >= 0 && Y < MapSizeY)
-			{
-				Neighbours.Add(WorldArray[Y][X]);
-			}
-		}
+		Neighbours.Add(WorldArray[Node->Y][Node->X - 1]);
+	}
+	if (Node->X < MapSizeX - 1)
+	{
+		Neighbours.Add(WorldArray[Node->Y][Node->X + 1]);
+	}
+	if (Node->Y > 0)
+	{
+		Neighbours.Add(WorldArray[Node->Y - 1][Node->X]);
+	}
+	if (Node->Y < MapSizeY - 1)
+	{
+		Neighbours.Add(WorldArray[Node->Y + 1][Node->X]);
 	}
 	return Neighbours;
 }
@@ -573,4 +579,42 @@ TArray<GridNode*> ALevelGenerator::GetNeighbours(GridNode* Node)
 int ALevelGenerator::GetManhattanDistance(const GridNode* Start, const GridNode* End) const
 {
 	return FMath::Abs(Start->X - End->X) + FMath::Abs(Start->Y - End->Y);
+}
+
+void ALevelGenerator::AddRenderActors(AShip* Ship)
+{
+	GridNode* CurrentNode = Ship->GoalNode;
+
+	if (CurrentNode)
+	{
+		for (int _ = 0; _ < 100000; _++)
+		{
+			if (CurrentNode->Parent == nullptr)
+			{
+				break;
+			}
+			FIntPoint Location = FIntPoint(CurrentNode->X, CurrentNode->Y);
+			if (!RenderingLocations.Contains(Location))
+			{
+				RenderingLocations.Add(Location);
+			}
+			Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
+			CurrentNode = CurrentNode->Parent;
+			if (_ == 9999)
+			{
+				UE_LOG(LogTemp, Error, TEXT("Infinite loop detected"));
+			}
+		}
+	}
+}
+
+void ALevelGenerator::RenderAllPaths()
+{
+	for (int i = 0; i < RenderingLocations.Num(); i++)
+	{
+		FVector Position(RenderingLocations[i].X * GRID_SIZE_WORLD, RenderingLocations[i].Y * GRID_SIZE_WORLD, 10);
+		AActor* PathActor = GetWorld()->SpawnActor(PathDisplayBlueprint, &Position);
+		PathDisplayActors.Add(PathActor);
+	}
+	RenderingLocations.Empty();
 }
