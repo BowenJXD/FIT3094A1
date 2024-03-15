@@ -5,8 +5,11 @@
 
 #include "FIT3094_A1_CodeGameModeBase.h"
 #include "Ship.h"
+#include "Containers/BinaryHeap.h"
 #include "Engine/World.h"
+#include "IO/IoPriorityQueue.h"
 #include "Kismet/GameplayStatics.h"
+#include "Util/IndexPriorityQueue.h"
 #include "Utils/StatisticsExporter.h"
 
 DEFINE_LOG_CATEGORY(IndividualShips);
@@ -277,7 +280,14 @@ void ALevelGenerator::DetailPlan()
 		
 		for(int j = 1; j < Ships[i]->Path.Num(); j++)
 		{
-			TotalPathCost += Ships[i]->Path[j]->GetTravelCost();
+			// Code Modification (Changing Code)
+			// ---------------------------
+			// Code before: TotalPathCost += Ships[i]->Path[j]->GetTravelCost();
+			// ---------------------------
+			int Cost = Ships[i]->Path[j]->GetTravelCost();
+			ShipPathCost += Cost;
+			TotalPathCost += Cost;
+			// ---------------------------
 		}
 		
 		if(IndividualStats)
@@ -494,30 +504,26 @@ void ALevelGenerator::CalculatePath()
 		AShip* Ship = Ships[i];
 		GridNode* StartNode = GetLocation(Ship);
 		GridNode* GoalNode = Ship->GoalNode;
-		
-		TArray<GridNode*> OpenList;
+
+		int maxId = MapSizeX * MapSizeY + 1;
+		// Open list implemented as a priority queue to optimise the time complexity
+		UE::Geometry::FIndexPriorityQueue OpenListQueue = UE::Geometry::FIndexPriorityQueue(maxId);
 		TArray<GridNode*> ClosedList;
-		OpenList.Add(StartNode);
+		OpenListQueue.Insert(GetIndex(StartNode), StartNode->F);
 		
-		while (OpenList.Num() > 0)
+		while (OpenListQueue.num_nodes > 0)
 		{
 			// Find the node with the lowest F value
-			GridNode* CurrentNode = OpenList[0];
-			for (int j = 1; j < OpenList.Num(); j++)
-			{
-				if (OpenList[j]->F < CurrentNode->F)
-				{
-					CurrentNode = OpenList[j];
-				}
-			}
+			GridNode* CurrentNode = GetNode(OpenListQueue.Dequeue());
 			
-			OpenList.Remove(CurrentNode);
 			ClosedList.Add(CurrentNode);
 
 			// Check if we have reached the goal
 			if (CurrentNode == GoalNode)
 			{
-				SearchCount += ClosedList.Num();
+				int CellsSearched = ClosedList.Num();
+				SearchCount += CellsSearched;
+				Ship->CellsSearched = CellsSearched;
 				RenderPath(Ship);
 				ResetAllNodes();
 				break;
@@ -529,12 +535,12 @@ void ALevelGenerator::CalculatePath()
 			{
 				GridNode* Neighbour = Neighbours[j];
 
-				//
+				// ------------DEBUG ONLY----------------
 				if (BlackList.Contains(FIntPoint(Neighbour->X, Neighbour->Y)))
 				{
 					UE_LOG(LogTemp, Warning, TEXT("Blacklisted"));
 				}
-				//
+				// --------------------------------------
 				
 				// Skip if the neighbour is a land node
 				if (Neighbour->GridType == GridNode::Land)
@@ -548,20 +554,23 @@ void ALevelGenerator::CalculatePath()
 				}
 				// Calculate the new G, H and F values
 				int NewG = CurrentNode->G + Neighbour->GetTravelCost();
-				if (!OpenList.Contains(Neighbour))
+				// Set values and insert into open list if the node is not in the open list
+				if (!OpenListQueue.Contains(GetIndex(Neighbour)))
 				{
-					OpenList.Add(Neighbour);
+					Neighbour->Parent = CurrentNode;
+					Neighbour->G = NewG;
+					Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
+					Neighbour->F = Neighbour->G + Neighbour->H;
+					OpenListQueue.Insert(GetIndex(Neighbour), Neighbour->F);
 				}
-				// Skip If the node is in the open list and isn't being relaxed
-				else if (NewG >= Neighbour->G)
+				// Set values if the node is in the open list and is being relaxed
+				else if (NewG < Neighbour->G)
 				{
-					continue;
+					Neighbour->Parent = CurrentNode;
+					Neighbour->G = NewG;
+					Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
+					Neighbour->F = Neighbour->G + Neighbour->H;
 				}
-				
-				Neighbour->Parent = CurrentNode;
-				Neighbour->G = NewG;
-				Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
-				Neighbour->F = Neighbour->G + Neighbour->H;
 			}
 		}
 	}	
@@ -606,4 +615,16 @@ TArray<GridNode*> ALevelGenerator::GetNeighbours(GridNode* Node)
 int ALevelGenerator::GetManhattanDistance(const GridNode* Start, const GridNode* End) const
 {
 	return FMath::Abs(Start->X - End->X) + FMath::Abs(Start->Y - End->Y);
+}
+
+int ALevelGenerator::GetIndex(GridNode* Node) const
+{
+	return Node->Y * MapSizeX + Node->X;
+}
+
+GridNode* ALevelGenerator::GetNode(int Index) const
+{
+	int X = Index % MapSizeX;
+	int Y = Index / MapSizeX;
+	return WorldArray[Y][X];
 }

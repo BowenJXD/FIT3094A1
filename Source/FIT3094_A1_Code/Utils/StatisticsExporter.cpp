@@ -22,6 +22,8 @@ void StatisticsExporter::ScenarioLogCSV()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("File Failed to save At %s "), *Path));
 	}
+
+	ScenarioLogs.Empty();
 }
 
 void StatisticsExporter::AddShipLog(ShipLog Log)
@@ -46,6 +48,8 @@ void StatisticsExporter::ShipLogCSV()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("File Failed to save At %s "), *Path));
 	}
+
+	ShipLogs.Empty();
 }
 
 FString StatisticsExporter::GetPath(FString FileName)

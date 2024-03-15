@@ -16,9 +16,11 @@ const FString ShipLog::CSVHeader()
 
 FString ShipLog::ToCSV()
 {
-	return ScenarioShipCount + "," +
-		ShipName + "," +
-		FString::FromInt(CellsExpanded) + "," +
-		FString::FromInt(PathCost) + "," +
-		FString::FromInt(ActionAmount);
+	FString result = "";
+	result += FString::FromInt(ScenarioShipCount) + ",";
+	result += ShipName + ",";
+	result += FString::FromInt(CellsExpanded) + ",";
+	result += FString::FromInt(PathCost) + ",";
+	result += FString::FromInt(ActionAmount);
+	return result;
 }

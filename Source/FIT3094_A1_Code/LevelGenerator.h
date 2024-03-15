@@ -113,6 +113,12 @@ public:
 
 	int GetManhattanDistance(const GridNode* Start, const GridNode* End) const;
 
+	/**
+	 * Convert nodes as int and vice versa to use FIndexPriorityQueue
+	 */
+	int GetIndex(GridNode* Node) const;
+	GridNode* GetNode(int Index) const;
+
 	// ICT Tree
 	// MDD ([k])
 };
