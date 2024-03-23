@@ -5,6 +5,14 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+enum class EDir {
+	None,
+	Up,
+	Down,
+	Left,
+	Right
+};
+
 /**
  * 
  */
@@ -32,4 +40,7 @@ public:
 	GridNode* Parent;
 	
 	float GetTravelCost() const;
+
+	// ----------------- New -----------------
+	EDir Direction = EDir::None;
 };

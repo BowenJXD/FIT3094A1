@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "CPD.h"
 #include "ScenarioLog.h"
 #include "ShipLog.h"
 #include "Misc/LazySingleton.h"
@@ -26,4 +27,6 @@ public:
 	void ShipLogCSV();
 
 	static FString GetPath(FString FileName);
+
+	// void FirstMoveMapLogCSV();
 };

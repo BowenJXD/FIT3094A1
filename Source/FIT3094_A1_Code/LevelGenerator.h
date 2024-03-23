@@ -6,6 +6,7 @@
 #include "GridNode.h"
 #include "Ship.h"
 #include "GameFramework/Actor.h"
+#include "Misc/LazySingleton.h"
 #include "LevelGenerator.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(IndividualShips, Warning, All);
@@ -97,6 +98,9 @@ public:
 	
 	// ICTS
 	void CalculatePath();
+
+	void AStar();
+	
 	void Replan(AShip* Ship);
 
 	//--------------------New Function--------------------
@@ -121,4 +125,18 @@ public:
 
 	// ICT Tree
 	// MDD ([k])
+
+	// ----------------- New -----------------
+	
+	void BackwardUniformCostSearch(GridNode* Target);
+
+	EDir GetDirection(const GridNode* Current, const GridNode* Next) const;
+
+	void FirstMoveMapLogCSV();
+
+	void FirstMoveMapLogTXT(FString Filename);
+	
+	void GenerateFirstMoveMapFiles(GridNode* Node);
+
+	GridNode* GetNodeFromDirection(GridNode* Node, EDir Direction);
 };

@@ -5,6 +5,8 @@ class ShipLog
 public:
 	int ScenarioShipCount;
 	FString ShipName;
+	FIntPoint Start;
+	FIntPoint End;
 	int CellsExpanded;
 	int PathCost;
 	int ActionAmount;

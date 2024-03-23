@@ -10,6 +10,7 @@
 #include "IO/IoPriorityQueue.h"
 #include "Kismet/GameplayStatics.h"
 #include "Util/IndexPriorityQueue.h"
+#include "Utils/CPD.h"
 #include "Utils/StatisticsExporter.h"
 
 DEFINE_LOG_CATEGORY(IndividualShips);
@@ -146,6 +147,9 @@ void ALevelGenerator::ResetAllNodes()
 			WorldArray[Y][X]->G = 0;
 			WorldArray[Y][X]->H = 0;
 			WorldArray[Y][X]->Parent = nullptr;
+
+			// ------------ Code Modification (Adding) ----------------
+			WorldArray[Y][X]->Direction = EDir::None;
 		}
 	}
 }
@@ -230,6 +234,8 @@ void ALevelGenerator::RenderPath(AShip* Ship)
 {
 	GridNode* CurrentNode = Ship->GoalNode;
 
+	TArray<FIntPoint> PathLog;
+	
 	if(CurrentNode)
 	{
 		while(CurrentNode->Parent != nullptr)
@@ -239,11 +245,22 @@ void ALevelGenerator::RenderPath(AShip* Ship)
 			PathDisplayActors.Add(PathActor);
 
 			Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
+			PathLog.Add(FIntPoint(CurrentNode->X, CurrentNode->Y));
 			CurrentNode = CurrentNode->Parent;
 		}
 	}
 	
-	
+	// log the path
+	FString PathLogString = "";
+	for (int i = 0; i < PathLog.Num(); i++)
+	{
+		PathLogString += FString::Printf(TEXT("(%d, %d)"), PathLog[i].X, PathLog[i].Y);
+		if (i < PathLog.Num() - 1)
+		{
+			PathLogString += " -> ";
+		}
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Ship %s path: %s"), *Ship->GetName(), *PathLogString);
 }
 
 void ALevelGenerator::ResetPath()
@@ -296,6 +313,8 @@ void ALevelGenerator::DetailPlan()
 
 			// Code Modification (Adding Code)
 			ShipLog* Log = new ShipLog();
+			Log->Start = FIntPoint(ShipSpawns[i].X, ShipSpawns[i].Y);
+			Log->End = FIntPoint(GoldSpawns[i].X, GoldSpawns[i].Y);
 			Log->ScenarioShipCount = Scenarios[ScenarioIndex - 1];
 			Log->ShipName = Ships[i]->GetName();
 			Log->CellsExpanded = Ships[i]->CellsSearched;
@@ -492,11 +511,36 @@ void ALevelGenerator::CheckForCollisions()
 //----------------------------------------------------------YOUR CODE-----------------------------------------------------------------------//
 
 void ALevelGenerator::CalculatePath()
-{
+{	
 	TArray<FIntPoint> BlackList = {  };
 	
 	for(int i = 0; i < Ships.Num(); i++)
 	{
+		//INSERT YOUR PATHFINDING ALGORITHM HERE
+		//Make sure to call RenderPath(Ship) when you have found a goal for a ship
+		GenerateFirstMoveMapFiles(Ships[i]->GoalNode);
+		
+		GridNode* Current = GetLocation(Ships[i]);
+		while (Current != Ships[i]->GoalNode)
+		{
+			GridNode* Parent = Current;
+			Current = GetNodeFromDirection(Current, Current->Direction);
+			Current->Parent = Parent;
+			SearchCount ++;
+			Ships[i]->CellsSearched++;
+		}
+		RenderPath(Ships[i]);
+		
+		ResetAllNodes();
+	}	
+}
+
+void ALevelGenerator::AStar()
+{
+	TArray<FIntPoint> BlackList = {  };
+	
+	for(int i = 0; i < Ships.Num(); i++)
+	{		
 		//INSERT YOUR PATHFINDING ALGORITHM HERE
 		//Make sure to call RenderPath(Ship) when you have found a goal for a ship
 		
@@ -573,7 +617,7 @@ void ALevelGenerator::CalculatePath()
 				}
 			}
 		}
-	}	
+	}
 }
 
 void ALevelGenerator::Replan(AShip* Ship)
@@ -628,3 +672,177 @@ GridNode* ALevelGenerator::GetNode(int Index) const
 	int Y = Index / MapSizeX;
 	return WorldArray[Y][X];
 }
+
+void ALevelGenerator::GenerateFirstMoveMapFiles(GridNode* Node)
+{
+	BackwardUniformCostSearch(Node);
+	FString Filename = FString::FromInt(Node->X) + "_" + FString::FromInt(Node->Y);
+	FirstMoveMapLogTXT(Filename);
+}
+
+GridNode* ALevelGenerator::GetNodeFromDirection(GridNode* Node, EDir Direction)
+{
+	switch (Direction)
+	{
+	case EDir::Up:
+		if (Node->Y > 0)
+		{
+			return WorldArray[Node->Y - 1][Node->X];
+		}
+	case EDir::Down:
+		if (Node->Y < MapSizeY - 1)
+		{
+			return WorldArray[Node->Y + 1][Node->X];
+		}
+	case EDir::Left:
+		if (Node->X > 0)
+		{
+			return WorldArray[Node->Y][Node->X - 1];
+		}
+	case EDir::Right:
+		if (Node->X < MapSizeX - 1)
+		{
+			return WorldArray[Node->Y][Node->X + 1];
+		}
+	default:
+		return nullptr;
+	}
+}
+
+void ALevelGenerator::BackwardUniformCostSearch(GridNode* Target)
+{
+	NodeQueue Frontier;
+
+	// Initialize the search
+	Target->H = 0;
+	Frontier.push(Target);
+
+	// Search loop
+	while (!Frontier.empty()) {
+		GridNode* Current = Frontier.top();
+		Frontier.pop();
+
+		// Iterate over the neighbors
+		auto Neighbors = GetNeighbours(Current);
+		for (GridNode* Next : Neighbors) {
+			float NewCost = Current->H + Next->GetTravelCost();
+			if (NewCost < Next->H
+				|| (Next->H == 0 && Next != Target)) {
+				Next->H = NewCost;
+				Frontier.push(Next);
+
+				// Update the first move direction
+				Next->Direction = GetDirection(Current, Next);
+			}
+		}
+	}
+}
+
+// Opposite direction
+EDir ALevelGenerator::GetDirection(const GridNode* Current, const GridNode* Next) const
+{
+	if (Next->X > Current->X)
+	{
+		return EDir::Left;
+	}
+	else if (Next->X < Current->X)
+	{
+		return EDir::Right;
+	}
+	else if (Next->Y > Current->Y)
+	{
+		return EDir::Up;
+	}
+	else if (Next->Y < Current->Y)
+	{
+		return EDir::Down;
+	}
+	return EDir::None;
+}
+
+void ALevelGenerator::FirstMoveMapLogCSV()
+{
+	FString CSV = "";
+	EDir Direction = EDir::None;
+	for (int i = 0; i < MAX_MAP_SIZE; i++)
+	{
+		FString Row = "";
+		for (int j = 0; j < MAX_MAP_SIZE; j++)
+		{
+			if (WorldArray[i][j] != nullptr)
+			{
+				Direction = WorldArray[i][j]->Direction;
+			}
+			else
+			{
+				Direction = EDir::None;
+			}
+			
+			FString DirectionChar = " ";
+			switch (Direction)
+			{
+			case EDir::Up:
+				DirectionChar = "^";
+				break;
+			case EDir::Down:
+				DirectionChar = "v";
+				break;
+			case EDir::Left:
+				DirectionChar = "<";
+				break;
+			case EDir::Right:
+				DirectionChar = ">";
+				break;
+			default: ;
+			}
+			Row += DirectionChar + ",";
+		}
+		CSV += Row + "\n";
+	}
+
+	FString Path = StatisticsExporter::GetPath("FirstMoveMap");
+	if (FFileHelper::SaveStringToFile(CSV, *Path))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("File Successfully Saved At %s "), *Path));
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("File Failed to save At %s "), *Path));
+	}
+}
+
+void ALevelGenerator::FirstMoveMapLogTXT(FString Filename)
+{
+	FString CSV = "";
+	EDir Direction = EDir::None;
+	for (int i = 0; i < MapSizeY; i++)
+	{
+		FString Row = "";
+		for (int j = 0; j < MapSizeX; j++)
+		{
+			if (WorldArray[i][j] != nullptr)
+			{
+				Direction = WorldArray[i][j]->Direction;
+			}
+			else
+			{
+				Direction = EDir::None;
+			}
+			
+			Row += FString::FromInt(static_cast<int>(Direction));
+		}
+		CSV += Row + "\n";
+	}
+
+	FString Path = FPaths::ProjectContentDir() + "Logs/FirstMoveMap/" + Filename + ".txt";
+	if (FFileHelper::SaveStringToFile(CSV, *Path))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("File Successfully Saved At %s "), *Path));
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("File Failed to save At %s "), *Path));
+	}
+}
+
+

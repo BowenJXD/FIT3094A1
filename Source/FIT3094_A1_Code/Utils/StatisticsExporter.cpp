@@ -63,6 +63,6 @@ FString StatisticsExporter::GetPath(FString FileName)
 	Timestamp.ReplaceInline(TEXT(" "), TEXT("_"));
 
 	// Append the timestamp to the filename
-	const FString Result = FPaths::ProjectContentDir() + "Logs/" + FileName + Timestamp + ".csv";
+	const FString Result = FPaths::ProjectContentDir() + "Logs/" + FileName + "/" + FileName + Timestamp + ".csv";
 	return *Result;
 }
