@@ -10,6 +10,7 @@
 #include "IO/IoPriorityQueue.h"
 #include "Kismet/GameplayStatics.h"
 #include "Util/IndexPriorityQueue.h"
+#include "Utils/CBS.h"
 #include "Utils/CPD.h"
 #include "Utils/StatisticsExporter.h"
 
@@ -47,9 +48,10 @@ void ALevelGenerator::Tick(float DeltaTime)
 		}
 	}
 
-	if(ShipsAtGoal == Ships.Num())
+	if(ShipsAtGoal == Ships.Num() || SkipScenarioCount < SkipScenarios)
 	{
 		NextLevel();
+		SkipScenarioCount++;
 	}
 }
 
@@ -150,6 +152,7 @@ void ALevelGenerator::ResetAllNodes()
 
 			// ------------ Code Modification (Adding) ----------------
 			WorldArray[Y][X]->Direction = EDir::None;
+			WorldArray[Y][X]->TimeStep = 0;
 		}
 	}
 }
@@ -233,8 +236,6 @@ void ALevelGenerator::InitialisePaths()
 void ALevelGenerator::RenderPath(AShip* Ship)
 {
 	GridNode* CurrentNode = Ship->GoalNode;
-
-	TArray<FIntPoint> PathLog;
 	
 	if(CurrentNode)
 	{
@@ -245,22 +246,18 @@ void ALevelGenerator::RenderPath(AShip* Ship)
 			PathDisplayActors.Add(PathActor);
 
 			Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
-			PathLog.Add(FIntPoint(CurrentNode->X, CurrentNode->Y));
-			CurrentNode = CurrentNode->Parent;
+			
+			// Code Modification (Changing Code)
+			// ---------------------------
+			// Code before: CurrentNode = CurrentNode->Parent;
+			// ---------------------------
+			Ship->PathCost += CurrentNode->GetTravelCost();
+			GridNode* NextNode = CurrentNode->Parent;
+			CurrentNode->Reset();
+			CurrentNode = NextNode;
+			// ---------------------------
 		}
 	}
-	
-	// log the path
-	FString PathLogString = "";
-	for (int i = 0; i < PathLog.Num(); i++)
-	{
-		PathLogString += FString::Printf(TEXT("(%d, %d)"), PathLog[i].X, PathLog[i].Y);
-		if (i < PathLog.Num() - 1)
-		{
-			PathLogString += " -> ";
-		}
-	}
-	UE_LOG(LogTemp, Warning, TEXT("Ship %s path: %s"), *Ship->GetName(), *PathLogString);
 }
 
 void ALevelGenerator::ResetPath()
@@ -511,113 +508,99 @@ void ALevelGenerator::CheckForCollisions()
 //----------------------------------------------------------YOUR CODE-----------------------------------------------------------------------//
 
 void ALevelGenerator::CalculatePath()
-{	
-	TArray<FIntPoint> BlackList = {  };
-	
-	for(int i = 0; i < Ships.Num(); i++)
+{
+	UCS();
+	CBS::Execute(Ships);
+	/*TArray<Constraint*> Constraints = {};
+	for (int i = 0; i < Ships.Num(); i++)
 	{
-		//INSERT YOUR PATHFINDING ALGORITHM HERE
-		//Make sure to call RenderPath(Ship) when you have found a goal for a ship
-		GenerateFirstMoveMapFiles(Ships[i]->GoalNode);
-		
-		GridNode* Current = GetLocation(Ships[i]);
-		while (Current != Ships[i]->GoalNode)
-		{
-			GridNode* Parent = Current;
-			Current = GetNodeFromDirection(Current, Current->Direction);
-			Current->Parent = Parent;
-			SearchCount ++;
-			Ships[i]->CellsSearched++;
-		}
-		RenderPath(Ships[i]);
-		
-		ResetAllNodes();
-	}	
+		AStar(Ships[i], Constraints);
+	}*/
 }
 
-void ALevelGenerator::AStar()
+void ALevelGenerator::AStar(AShip* Ship)
 {
-	TArray<FIntPoint> BlackList = {  };
-	
-	for(int i = 0; i < Ships.Num(); i++)
-	{		
-		//INSERT YOUR PATHFINDING ALGORITHM HERE
-		//Make sure to call RenderPath(Ship) when you have found a goal for a ship
-		
-		// A* algorithm
-		AShip* Ship = Ships[i];
-		GridNode* StartNode = GetLocation(Ship);
-		GridNode* GoalNode = Ship->GoalNode;
+    GridNode* StartNode = GetLocation(Ship);
+    GridNode* GoalNode = Ship->GoalNode;
 
-		int maxId = MapSizeX * MapSizeY + 1;
-		// Open list implemented as a priority queue to optimise the time complexity
-		UE::Geometry::FIndexPriorityQueue OpenListQueue = UE::Geometry::FIndexPriorityQueue(maxId);
-		TArray<GridNode*> ClosedList;
-		OpenListQueue.Insert(GetIndex(StartNode), StartNode->F);
-		
-		while (OpenListQueue.num_nodes > 0)
+    int maxId = MapSizeX * MapSizeY + 1;
+    UE::Geometry::FIndexPriorityQueue OpenListQueue = UE::Geometry::FIndexPriorityQueue(maxId);
+    TArray<GridNode*> ClosedList;
+    OpenListQueue.Insert(GetIndex(StartNode), StartNode->F);
+    StartNode->TimeStep = 0;
+
+    while (OpenListQueue.num_nodes > 0)
+    {
+        GridNode* CurrentNode = GetNode(OpenListQueue.Dequeue());
+
+        ClosedList.Add(CurrentNode);
+
+        if (CurrentNode == GoalNode)
+        {
+            int CellsSearched = ClosedList.Num();
+            SearchCount += CellsSearched;
+            Ship->CellsSearched = CellsSearched;
+        	
+            // RenderPath(Ship);
+        	Ship->PathCost = 0;
+        	Ship->Path.Empty();
+        	while (CurrentNode->Parent != nullptr)
+        	{
+        		Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
+        		Ship->PathCost += CurrentNode->GetTravelCost();
+        		GridNode* NextNode = CurrentNode->Parent;
+        		CurrentNode->Reset();
+        		CurrentNode = NextNode;
+        	}
+        	//
+        	
+            break;
+        }
+
+        TArray<GridNode*> Neighbours = GetNeighbours(CurrentNode);
+        for (int j = 0; j < Neighbours.Num(); j++)
+        {
+            GridNode* Neighbour = Neighbours[j];
+
+            if (Neighbour->GridType == GridNode::Land || ClosedList.Contains(Neighbour))
+            {
+                continue;
+            }
+
+            int NewG = CurrentNode->G + Neighbour->GetTravelCost();
+            int NewTimeStep = CurrentNode->TimeStep + 1;
+
+            if (IsNodeValid(CurrentNode, Neighbour, NewTimeStep, Ship))
+            {
+                if (!OpenListQueue.Contains(GetIndex(Neighbour))
+                	|| NewG < Neighbour->G)
+                {
+                    Neighbour->Parent = CurrentNode;
+                    Neighbour->G = NewG;
+                    Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
+                    Neighbour->F = Neighbour->G + Neighbour->H;
+                    Neighbour->TimeStep = NewTimeStep;
+                    OpenListQueue.Insert(GetIndex(Neighbour), Neighbour->F);
+                }
+            }
+        }
+    }
+}
+
+bool ALevelGenerator::IsNodeValid(GridNode* Current, GridNode* Next, int NextTimeStep, AShip* Ship)
+{
+	bool bValid = true;
+	for (Constraint* Constraint : Ship->Constraints)
+	{
+		if (Constraint->TimeStep == NextTimeStep
+			&& Constraint->End == Next
+			&& (Constraint->Start == Next || Constraint->Start == Current))
 		{
-			// Find the node with the lowest F value
-			GridNode* CurrentNode = GetNode(OpenListQueue.Dequeue());
-			
-			ClosedList.Add(CurrentNode);
-
-			// Check if we have reached the goal
-			if (CurrentNode == GoalNode)
-			{
-				int CellsSearched = ClosedList.Num();
-				SearchCount += CellsSearched;
-				Ship->CellsSearched = CellsSearched;
-				RenderPath(Ship);
-				ResetAllNodes();
-				break;
-			}
-
-			// Check the neighbours of the current node
-			TArray<GridNode*> Neighbours = GetNeighbours(CurrentNode);
-			for (int j = 0; j < Neighbours.Num(); j++)
-			{
-				GridNode* Neighbour = Neighbours[j];
-
-				// ------------DEBUG ONLY----------------
-				if (BlackList.Contains(FIntPoint(Neighbour->X, Neighbour->Y)))
-				{
-					UE_LOG(LogTemp, Warning, TEXT("Blacklisted"));
-				}
-				// --------------------------------------
-				
-				// Skip if the neighbour is a land node
-				if (Neighbour->GridType == GridNode::Land)
-				{
-					continue;
-				}
-				// Skip if the neighbour is in the closed list
-				if (ClosedList.Contains(Neighbour))
-				{
-					continue;
-				}
-				// Calculate the new G, H and F values
-				int NewG = CurrentNode->G + Neighbour->GetTravelCost();
-				// Set values and insert into open list if the node is not in the open list
-				if (!OpenListQueue.Contains(GetIndex(Neighbour)))
-				{
-					Neighbour->Parent = CurrentNode;
-					Neighbour->G = NewG;
-					Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
-					Neighbour->F = Neighbour->G + Neighbour->H;
-					OpenListQueue.Insert(GetIndex(Neighbour), Neighbour->F);
-				}
-				// Set values if the node is in the open list and is being relaxed
-				else if (NewG < Neighbour->G)
-				{
-					Neighbour->Parent = CurrentNode;
-					Neighbour->G = NewG;
-					Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
-					Neighbour->F = Neighbour->G + Neighbour->H;
-				}
-			}
+			bValid = false;
+			break;
 		}
 	}
+	return bValid;
 }
 
 void ALevelGenerator::Replan(AShip* Ship)
@@ -707,6 +690,40 @@ GridNode* ALevelGenerator::GetNodeFromDirection(GridNode* Node, EDir Direction)
 	default:
 		return nullptr;
 	}
+}
+
+void ALevelGenerator::RenderPath(TArray<GridNode*> Path)
+{
+	for (int i = 0; i < Path.Num(); i++)
+	{
+		FVector Position(Path[i]->X * GRID_SIZE_WORLD, Path[i]->Y * GRID_SIZE_WORLD, 10);
+		AActor* PathActor = GetWorld()->SpawnActor(PathDisplayBlueprint, &Position);
+		PathDisplayActors.Add(PathActor);
+		Path[i]->Reset();
+	}
+}
+
+void ALevelGenerator::UCS()
+{     	
+    for(int i = 0; i < Ships.Num(); i++)
+    {
+     	//INSERT YOUR PATHFINDING ALGORITHM HERE
+     	//Make sure to call RenderPath(Ship) when you have found a goal for a ship
+     	BackwardUniformCostSearch(Ships[i]->GoalNode);
+     	
+     	GridNode* Current = GetLocation(Ships[i]);
+     	while (Current != Ships[i]->GoalNode)
+     	{
+     		GridNode* Parent = Current;
+     		Current = GetNodeFromDirection(Current, Current->Direction);
+     		Current->Parent = Parent;
+     		SearchCount ++;
+     		Ships[i]->CellsSearched++;
+     	}
+     	RenderPath(Ships[i]);
+     	
+     	ResetAllNodes();
+    }	
 }
 
 void ALevelGenerator::BackwardUniformCostSearch(GridNode* Target)

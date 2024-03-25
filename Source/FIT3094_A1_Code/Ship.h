@@ -7,6 +7,7 @@
 #include "Ship.generated.h"
 
 class ALevelGenerator;
+struct Constraint;
 
 UCLASS()
 class FIT3094_A1_CODE_API AShip : public AActor
@@ -46,6 +47,7 @@ public:
 	bool bAtGoal = false;
 
 	// ----------------- New -----------------
-	// MDD
-	//
+	unsigned int PathCost = 0;
+
+	TArray<Constraint*> Constraints;
 };

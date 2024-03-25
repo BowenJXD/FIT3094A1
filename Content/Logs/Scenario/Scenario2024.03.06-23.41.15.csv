@@ -6,3 +6,5 @@ ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken
 25,625587,3584,4783,2
 50,1121071,6637,8747,4
 100,2344197,13589,17865,8
+,,,,
+TotalCellExpanded being everything touched.,,,,

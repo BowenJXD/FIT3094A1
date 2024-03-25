@@ -29,3 +29,13 @@ float GridNode::GetTravelCost() const
 		return 1;
 	}
 }
+
+void GridNode::Reset()
+{
+	F = 0;
+	G = 0;
+	H = 0;
+	Parent = nullptr;
+	Direction = EDir::None;
+	TimeStep = 0;
+}

@@ -6,3 +6,5 @@ ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken
 25,3614,3614,4785,1
 50,6703,6703,8749,2
 100,13641,13641,17869,4
+,,,,
+First usage of FirstMoveMap.,,,,

@@ -6,3 +6,5 @@ ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken
 25,156575,3584,4783,2
 50,280494,6637,8747,3
 100,586574,13589,17865,7
+,,,,
+"Optimal for A1, before changing to IndexPriorityQueue",,,,

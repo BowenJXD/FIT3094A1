@@ -41,6 +41,12 @@ public:
 	
 	float GetTravelCost() const;
 
-	// ----------------- New -----------------
+	// ----------------- Code Modification (Adding) -----------------
+
+	unsigned int TimeStep = 0;
+	
 	EDir Direction = EDir::None;
+
+	void Reset();
+	
 };

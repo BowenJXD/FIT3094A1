@@ -79,4 +79,3 @@ void AShip::Tick(float DeltaTime)
 		
 	}
 }
-

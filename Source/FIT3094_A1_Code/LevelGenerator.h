@@ -7,6 +7,7 @@
 #include "Ship.h"
 #include "GameFramework/Actor.h"
 #include "Misc/LazySingleton.h"
+#include "Utils/CBS.h"
 #include "LevelGenerator.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(IndividualShips, Warning, All);
@@ -56,7 +57,7 @@ public:
 		AActor* Camera;
 
 	//CHANGE THESE IF YOU WANT COLLISION TO BE ENABLED OR IF YOU WANT INDIVIDUAL SHIP STATS
-	bool CollisionAndReplanning = false;
+	bool CollisionAndReplanning = true;
 	bool IndividualStats = true;
 
 	bool CameraRotated = false;
@@ -96,10 +97,12 @@ public:
 	void DestroyAllActors();
 	void CheckForCollisions();
 	
-	// ICTS
+	// CBS
 	void CalculatePath();
 
-	void AStar();
+	void AStar(AShip* Ship);
+
+	bool IsNodeValid(GridNode* Current, GridNode* Next, int NextTimeStep, AShip* Ship);
 	
 	void Replan(AShip* Ship);
 
@@ -111,7 +114,7 @@ public:
 	GridNode* GetLocation(const AShip* Ship) const;
 
 	/**
-	 * @return Max of 4 Neighbours from 4 directions (up, down, left, right)
+	 * @return Max of 4 Neighbours from 4 directions (up, down, left, right, stay)
 	 */
 	TArray<GridNode*> GetNeighbours(GridNode* Node);
 
@@ -123,10 +126,9 @@ public:
 	int GetIndex(GridNode* Node) const;
 	GridNode* GetNode(int Index) const;
 
-	// ICT Tree
-	// MDD ([k])
-
 	// ----------------- New -----------------
+
+	void UCS();
 	
 	void BackwardUniformCostSearch(GridNode* Target);
 
@@ -139,4 +141,11 @@ public:
 	void GenerateFirstMoveMapFiles(GridNode* Node);
 
 	GridNode* GetNodeFromDirection(GridNode* Node, EDir Direction);
+
+	void RenderPath(TArray<GridNode*> Path);
+
+	//
+
+	int SkipScenarios = 4;
+	int SkipScenarioCount = 0;
 };

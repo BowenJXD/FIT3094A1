@@ -6,3 +6,5 @@ ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken
 50,625587,3584,4783,1
 100,1121071,6637,8747,3
 0,2344197,13589,17865,7
+,,,,
+"First log, buggy",,,,
