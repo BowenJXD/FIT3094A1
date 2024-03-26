@@ -1,0 +1,10 @@
+ShipCount,TotalCellsExpanded,TotalPathLength(Ratio),TotalPathCost,TotalTimeTaken
+1,12366,10000,298,0
+2,7955,10000,301,0
+5,15275,10000,694,0
+10,40181,10000,1576,0
+25,154765,10000,6383,1
+50,277715,10000,12949,1
+100,581472,30000,64067,4
+,,,,
+No Collision Avoidance AStar with cost penalty.,,,,

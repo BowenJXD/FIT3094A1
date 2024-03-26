@@ -1,0 +1,13 @@
+ShipCount,TotalCellsExpanded,TotalPathLength(Ratio),TotalPathCost,TotalTimeTaken
+1,233,0,0,0
+2,181,0,0,0
+5,495,0,0,0
+10,1160,0,0,0
+25,154672,0,0,2
+50,945435,1,8797,7
+100,7794414,1,18019,42
+,,,,
+,,scen 6 ratio,1.005716246,
+,,scen 7 ratio,1.008620207,
+,,,,
+First result with no collision,,,,

@@ -11,7 +11,7 @@ ScenarioLog::ScenarioLog()
 
 const FString ScenarioLog::CSVHeader()
 {
-	return "ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken";
+	return "ShipCount,TotalCellsExpanded,TotalPathLength(Ratio),TotalPathCost,TotalTimeTaken";
 }
 
 FString ScenarioLog::ToCSV()

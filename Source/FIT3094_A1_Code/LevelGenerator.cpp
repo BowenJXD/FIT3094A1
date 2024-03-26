@@ -247,15 +247,11 @@ void ALevelGenerator::RenderPath(AShip* Ship)
 
 			Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
 			
-			// Code Modification (Changing Code)
-			// ---------------------------
-			// Code before: CurrentNode = CurrentNode->Parent;
+			// Code Modification (Adding Code)
 			// ---------------------------
 			Ship->PathCost += CurrentNode->GetTravelCost();
-			GridNode* NextNode = CurrentNode->Parent;
-			CurrentNode->Reset();
-			CurrentNode = NextNode;
 			// ---------------------------
+			CurrentNode = CurrentNode->Parent;
 		}
 	}
 }
@@ -335,13 +331,16 @@ void ALevelGenerator::DetailPlan()
 	UE_LOG(Heuristics, Warning, TEXT("Total Planning Time Taken: %d seconds"), PlanEndTime - PlanStartTime);
 
 	// Code Modification (Adding Code)
-	ScenarioLog* Log = new ScenarioLog();
-	Log->ShipCount = Scenarios[ScenarioIndex - 1];
-	Log->TotalCellsExpanded = SearchCount;
-	Log->TotalPathLength = ShipPathLength;
-	Log->TotalPathCost = TotalPathCost;
-	Log->TotalTimeTaken = PlanEndTime - PlanStartTime;
-	StatisticsExporter::Get().AddScenarioLog(*Log);
+	if (!CollisionAndReplanning)
+	{
+		ScenarioLog* Log = new ScenarioLog();
+		Log->ShipCount = Scenarios[ScenarioIndex - 1];
+		Log->TotalCellsExpanded = SearchCount;
+		Log->TotalPathLength = ShipPathLength;
+		Log->TotalPathCost = TotalPathCost;
+		Log->TotalTimeTaken = PlanEndTime - PlanStartTime;
+		StatisticsExporter::Get().AddScenarioLog(*Log);
+	}
 	// ---------------------------
 }
 
@@ -367,8 +366,19 @@ void ALevelGenerator::DetailActual()
 		UE_LOG(Heuristics, Warning, TEXT("Actual Total Cells Expanded: %d with actual Total Path Action Amount of: %d"), SearchCount, PathCostTaken.Num());
 		UE_LOG(Heuristics, Warning, TEXT("Actual Total Path Cost including Crashes & Replanning: %d"), TotalPathCost);
 		UE_LOG(Heuristics, Warning, TEXT("Ratio of Actual vs Planned: %fx"), (float)(TotalPathCost)/PreviousPlannedCost);
-	}
 
+		
+		// Code Modification (Adding Code)
+		ScenarioLog* Log = new ScenarioLog();
+		Log->ShipCount = Scenarios[ScenarioIndex - 1];
+		Log->TotalCellsExpanded = SearchCount;
+		Log->TotalPathLength = (TotalPathCost) * 10000 / PreviousPlannedCost;
+		Log->TotalPathCost = TotalPathCost;
+		Log->TotalTimeTaken = PlanEndTime - PlanStartTime;
+		StatisticsExporter::Get().AddScenarioLog(*Log);
+		// ---------------------------
+	}
+	
 	CrashPenalty = 0;
 	PathCostTaken.Empty();
 }
@@ -509,23 +519,23 @@ void ALevelGenerator::CheckForCollisions()
 
 void ALevelGenerator::CalculatePath()
 {
-	UCS();
-	CBS::Execute(Ships);
-	/*TArray<Constraint*> Constraints = {};
+	// UCS();
 	for (int i = 0; i < Ships.Num(); i++)
 	{
-		AStar(Ships[i], Constraints);
-	}*/
+		AStar(Ships[i]);
+	}
+	
+	CBS::Execute(Ships);
 }
 
-void ALevelGenerator::AStar(AShip* Ship)
+void ALevelGenerator::AStar(AShip* Ship, TArray<Constraint*> Constraints)
 {
     GridNode* StartNode = GetLocation(Ship);
     GridNode* GoalNode = Ship->GoalNode;
 
     int maxId = MapSizeX * MapSizeY + 1;
     UE::Geometry::FIndexPriorityQueue OpenListQueue = UE::Geometry::FIndexPriorityQueue(maxId);
-    TArray<GridNode*> ClosedList;
+    TMap<GridNode*, int> ClosedList;
     OpenListQueue.Insert(GetIndex(StartNode), StartNode->F);
     StartNode->TimeStep = 0;
 
@@ -541,7 +551,7 @@ void ALevelGenerator::AStar(AShip* Ship)
             SearchCount += CellsSearched;
             Ship->CellsSearched = CellsSearched;
         	
-            // RenderPath(Ship);
+            /*RenderPath(Ship);*/
         	Ship->PathCost = 0;
         	Ship->Path.Empty();
         	while (CurrentNode->Parent != nullptr)
@@ -549,9 +559,9 @@ void ALevelGenerator::AStar(AShip* Ship)
         		Ship->Path.EmplaceAt(0, WorldArray[CurrentNode->Y][CurrentNode->X]);
         		Ship->PathCost += CurrentNode->GetTravelCost();
         		GridNode* NextNode = CurrentNode->Parent;
-        		CurrentNode->Reset();
         		CurrentNode = NextNode;
         	}
+        	ResetAllNodes();
         	//
         	
             break;
@@ -562,7 +572,7 @@ void ALevelGenerator::AStar(AShip* Ship)
         {
             GridNode* Neighbour = Neighbours[j];
 
-            if (Neighbour->GridType == GridNode::Land || ClosedList.Contains(Neighbour))
+            if (ClosedList.Contains(Neighbour))
             {
                 continue;
             }
@@ -570,7 +580,7 @@ void ALevelGenerator::AStar(AShip* Ship)
             int NewG = CurrentNode->G + Neighbour->GetTravelCost();
             int NewTimeStep = CurrentNode->TimeStep + 1;
 
-            if (IsNodeValid(CurrentNode, Neighbour, NewTimeStep, Ship))
+            if (IsNodeValid(CurrentNode, Neighbour, NewTimeStep, Ship, Constraints))
             {
                 if (!OpenListQueue.Contains(GetIndex(Neighbour))
                 	|| NewG < Neighbour->G)
@@ -587,10 +597,11 @@ void ALevelGenerator::AStar(AShip* Ship)
     }
 }
 
-bool ALevelGenerator::IsNodeValid(GridNode* Current, GridNode* Next, int NextTimeStep, AShip* Ship)
+bool ALevelGenerator::IsNodeValid(GridNode* Current, GridNode* Next, int NextTimeStep, AShip* Ship, TArray<Constraint*> Constraints)
 {
 	bool bValid = true;
-	for (Constraint* Constraint : Ship->Constraints)
+	Constraints.Append(Ship->Constraints);
+	for (Constraint* Constraint : Constraints)
 	{
 		if (Constraint->TimeStep == NextTimeStep
 			&& Constraint->End == Next

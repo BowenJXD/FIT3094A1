@@ -58,7 +58,7 @@ public:
 
 	//CHANGE THESE IF YOU WANT COLLISION TO BE ENABLED OR IF YOU WANT INDIVIDUAL SHIP STATS
 	bool CollisionAndReplanning = true;
-	bool IndividualStats = true;
+	bool IndividualStats = false;
 
 	bool CameraRotated = false;
 
@@ -100,9 +100,9 @@ public:
 	// CBS
 	void CalculatePath();
 
-	void AStar(AShip* Ship);
+	void AStar(AShip* Ship, TArray<Constraint*> Constraints = TArray<Constraint*>());
 
-	bool IsNodeValid(GridNode* Current, GridNode* Next, int NextTimeStep, AShip* Ship);
+	bool IsNodeValid(GridNode* Current, GridNode* Next, int NextTimeStep, AShip* Ship, TArray<Constraint*> Constraints);
 	
 	void Replan(AShip* Ship);
 
@@ -146,6 +146,6 @@ public:
 
 	//
 
-	int SkipScenarios = 4;
+	int SkipScenarios = 0;
 	int SkipScenarioCount = 0;
 };

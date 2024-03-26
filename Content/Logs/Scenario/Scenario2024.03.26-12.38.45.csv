@@ -1,0 +1,10 @@
+ShipCount,TotalCellsExpanded,TotalPathLength(Ratio),TotalPathCost,TotalTimeTaken
+1,12963,10000,298,0
+2,7873,10000,301,0
+5,15137,10000,694,0
+10,40295,10000,1576,0
+25,262990,10000,4791,1
+50,659799,10000,8781,2
+100,6637696,10000,18015,26
+,,,,
+Final result with CBS,,,,

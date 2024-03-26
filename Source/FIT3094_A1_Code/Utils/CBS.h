@@ -20,21 +20,25 @@ struct Constraint
 struct CTNode
 {
 public:
- CTNode* Parent;
- AShip* Agent1;
- AShip* Agent2;
- TMap<AShip*, TArray<GridNode*>> Solution;
+ AShip* ConstrainedAgent;
+ AShip* OtherAgent;
+ TArray<Constraint*> Constraints1;
+ TArray<Constraint*> Constraints2;
+ TArray<GridNode*> Solution1;
+ TArray<GridNode*> Solution2;
  unsigned int Cost;
 
- CTNode(CTNode* Parent, AShip* Agent1, AShip* Agent2)
+ CTNode(AShip* Agent1, AShip* Agent2, TArray<Constraint*> Constraints1 = TArray<Constraint*>(), TArray<Constraint*> Constraints2 = TArray<Constraint*>())
  {
-  this->Parent = Parent;
-  this->Agent1 = Agent1;
-  this->Agent2 = Agent2;
+  this->ConstrainedAgent = Agent1;
+  this->OtherAgent = Agent2;
+  this->Constraints1 = Constraints1;
+  this->Constraints2 = Constraints2;
  }
 
- Conflict* FindConflict();
- void FindSolution(AShip* ConstrainedAgent);
+ void FindSolution();
+
+ void AcceptSolution();
 };
 
 /**
@@ -53,7 +57,9 @@ struct CTNodeCompare
  */
 class CBS
 {
-public: 
+public:
+ constexpr static int MaxIteration = 20;
+ 
  static void Execute(TArray<AShip*> Agents);
  static Conflict* FindConflict(AShip* Agent1, AShip* Agent2);
  static void ResolveConflict(Conflict* Con);
