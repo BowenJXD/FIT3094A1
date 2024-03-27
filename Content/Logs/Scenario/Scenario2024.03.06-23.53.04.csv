@@ -1,10 +1,10 @@
-ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken
-1,12490,233,298,0
-2,7955,181,301,0
-5,15393,491,694,0
-10,40860,1152,1576,1
-25,156575,3584,4783,2
-50,280494,6637,8747,3
-100,586574,13589,17865,7
-,,,,
-"Optimal for A1, before changing to IndexPriorityQueue",,,,
+ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken,,,,,,,,,,,
+1,12490,233,298,0,,,,,Completeness,Optimality,Difficulty,Time Complexity,Space Complexity,Strategic/Reactive,Note
+2,7955,181,301,0,,,,Prioritized,No,No,,Medium,Low,Strategic,
+5,15393,491,694,0,,,,MCP,Yes,No,Medium,Fast,Low,Reactive,
+10,40860,1152,1576,1,,,,Push,No,No,Medium,Fast,Low,Reactive,
+25,156575,3584,4783,2,,,,ICTS,Yes,Yes,Very High,High,High,Strategic,
+50,280494,6637,8747,3,,,,CBS,Yes,Yes,High,High,High,Strategic,
+100,586574,13589,17865,7,,,,,,,,,,,
+Comment:,,,,,,,,,,,,,,,
+"Optimal for part A, before changing to IndexPriorityQueue",,,,,,,,,,,,,,,

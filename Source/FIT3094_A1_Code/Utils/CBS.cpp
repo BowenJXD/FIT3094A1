@@ -107,9 +107,7 @@ void CTNode::FindSolution()
 void CTNode::AcceptSolution()
 {
 	ConstrainedAgent->Path = Solution1;
-	ConstrainedAgent->LevelGenerator->RenderPath(Solution1);
 	ConstrainedAgent->Constraints.Append(Constraints1);
 	OtherAgent->Path = Solution2;
-	OtherAgent->LevelGenerator->RenderPath(Solution2);
 	OtherAgent->Constraints.Append(Constraints2);
 }

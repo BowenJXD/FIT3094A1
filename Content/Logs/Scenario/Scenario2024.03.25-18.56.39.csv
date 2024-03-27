@@ -6,3 +6,5 @@ ShipCount,TotalCellsExpanded,TotalPathLength,TotalPathCost,TotalTimeTaken
 25,155299,3600,4783,1
 50,277948,6671,8749,2
 100,581956,13569,17867,7
+,,,,
+Normal usage of FIndexPriorityQueue,,,,

@@ -524,8 +524,13 @@ void ALevelGenerator::CalculatePath()
 	{
 		AStar(Ships[i]);
 	}
-	
-	CBS::Execute(Ships);
+
+	if (CollisionAndReplanning) CBS::Execute(Ships);
+
+	for (int i = 0; i < Ships.Num(); i++)
+	{
+		RenderPath(Ships[i]->Path);
+	}
 }
 
 void ALevelGenerator::AStar(AShip* Ship, TArray<Constraint*> Constraints)
@@ -533,15 +538,22 @@ void ALevelGenerator::AStar(AShip* Ship, TArray<Constraint*> Constraints)
     GridNode* StartNode = GetLocation(Ship);
     GridNode* GoalNode = Ship->GoalNode;
 
-    int maxId = MapSizeX * MapSizeY + 1;
-    UE::Geometry::FIndexPriorityQueue OpenListQueue = UE::Geometry::FIndexPriorityQueue(maxId);
+    TMap<GridNode*, int> OpenList;
     TMap<GridNode*, int> ClosedList;
-    OpenListQueue.Insert(GetIndex(StartNode), StartNode->F);
+    OpenList.Add(StartNode);
     StartNode->TimeStep = 0;
 
-    while (OpenListQueue.num_nodes > 0)
+    while (OpenList.Num() > 0)
     {
-        GridNode* CurrentNode = GetNode(OpenListQueue.Dequeue());
+        GridNode* CurrentNode = OpenList.begin().Key();
+    	for (auto& Pair : OpenList)
+		{
+			if (Pair.Key->F < CurrentNode->F)
+			{
+				CurrentNode = Pair.Key;
+			}
+		}
+    	OpenList.Remove(CurrentNode);
 
         ClosedList.Add(CurrentNode);
 
@@ -550,8 +562,7 @@ void ALevelGenerator::AStar(AShip* Ship, TArray<Constraint*> Constraints)
             int CellsSearched = ClosedList.Num();
             SearchCount += CellsSearched;
             Ship->CellsSearched = CellsSearched;
-        	
-            /*RenderPath(Ship);*/
+
         	Ship->PathCost = 0;
         	Ship->Path.Empty();
         	while (CurrentNode->Parent != nullptr)
@@ -572,17 +583,14 @@ void ALevelGenerator::AStar(AShip* Ship, TArray<Constraint*> Constraints)
         {
             GridNode* Neighbour = Neighbours[j];
 
-            if (ClosedList.Contains(Neighbour))
-            {
-                continue;
-            }
+        	if (ClosedList.Contains(Neighbour)) continue;
 
             int NewG = CurrentNode->G + Neighbour->GetTravelCost();
             int NewTimeStep = CurrentNode->TimeStep + 1;
 
             if (IsNodeValid(CurrentNode, Neighbour, NewTimeStep, Ship, Constraints))
             {
-                if (!OpenListQueue.Contains(GetIndex(Neighbour))
+                if (!OpenList.Contains(Neighbour)
                 	|| NewG < Neighbour->G)
                 {
                     Neighbour->Parent = CurrentNode;
@@ -590,7 +598,11 @@ void ALevelGenerator::AStar(AShip* Ship, TArray<Constraint*> Constraints)
                     Neighbour->H = GetManhattanDistance(Neighbour, GoalNode);
                     Neighbour->F = Neighbour->G + Neighbour->H;
                     Neighbour->TimeStep = NewTimeStep;
-                    OpenListQueue.Insert(GetIndex(Neighbour), Neighbour->F);
+
+					if (!OpenList.Contains(Neighbour))
+					{
+						OpenList.Add(Neighbour);
+					}
                 }
             }
         }

@@ -57,7 +57,7 @@ public:
 		AActor* Camera;
 
 	//CHANGE THESE IF YOU WANT COLLISION TO BE ENABLED OR IF YOU WANT INDIVIDUAL SHIP STATS
-	bool CollisionAndReplanning = true;
+	bool CollisionAndReplanning = false;
 	bool IndividualStats = false;
 
 	bool CameraRotated = false;

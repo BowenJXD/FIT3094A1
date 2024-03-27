@@ -1,0 +1,8 @@
+ShipCount,TotalCellsExpanded,TotalPathLength(Ratio),TotalPathCost,TotalTimeTaken
+1,12337,0,0,0
+2,7927,0,0,0
+5,15358,0,0,0
+10,48690,0,0,0
+25,291663,0,0,1
+50,782873,0,0,5
+100,6288831,0,0,40
